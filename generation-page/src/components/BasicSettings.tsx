@@ -173,6 +173,11 @@ export function BasicSettings({
                 }
                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
+              {errors[setting.key] && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors[setting.key].message}
+                </p>
+              )}
             </div>
           ))}
         </div>

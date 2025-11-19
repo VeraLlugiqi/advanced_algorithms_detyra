@@ -53,7 +53,10 @@ export function generateSchedule(config: Config): Config {
     max_duration,
     min_score,
     max_score,
+    max_consecutive_genre,
     channels_count,
+    switch_penalty,
+    termination_penalty,
     priority_blocks: userPriorityBlocks,
     time_preferences: userTimePreferences,
   } = config;
@@ -62,9 +65,13 @@ export function generateSchedule(config: Config): Config {
     "news",
     "sports",
     "music",
+    "movie",
     "movies",
     "kids",
     "documentary",
+    "drama",
+    "talk",
+    "entertainment",
   ];
 
   const rand = (min: number, max: number): number =>
@@ -116,64 +123,116 @@ export function generateSchedule(config: Config): Config {
         };
       });
 
-  // Generate channels with programs
-  const channels: Channel[] = Array.from({
-    length: channels_count,
-  }).map((_, channelId) => {
-    let programs: Program[] = [];
-    let currentStart = opening_time;
-    let consecutiveGenreCount = 0;
-    let lastGenre = "";
-
-    while (currentStart < closing_time) {
-      // Calculate available time
-      const remainingTime = closing_time - currentStart;
-      if (remainingTime < min_duration) break;
-
-      // Generate duration within min/max constraints
-      const maxPossibleDuration = Math.min(max_duration, remainingTime);
-      const duration = rand(min_duration, maxPossibleDuration);
-      const end = currentStart + duration;
-
-      // Pick genre (avoid too many consecutive same genres)
-      let genre = pickGenre();
-      if (genre === lastGenre && consecutiveGenreCount >= config.max_consecutive_genre) {
-        // Force different genre
-        const otherGenres = GENRES.filter(g => g !== lastGenre);
-        genre = otherGenres[rand(0, otherGenres.length - 1)];
-        consecutiveGenreCount = 0;
-      } else if (genre === lastGenre) {
-        consecutiveGenreCount++;
-      } else {
-        consecutiveGenreCount = 1;
-        lastGenre = genre;
-      }
-
-      // Generate score within min/max constraints
-      const score = rand(min_score, max_score);
-
-      programs.push({
-        program_id: `channel_${channelId}_program_${programs.length + 1}`,
-        start: currentStart,
-        end,
-        genre,
-        score,
+  // Use user-provided channels or generate automatically
+  let channels: Channel[] = [];
+  
+  if (config.channels && config.channels.length > 0) {
+    // Use channels from UI, but ensure proper formatting
+    channels = config.channels.map((channel: any, index: number) => {
+      // Ensure channel_id is sequential starting from 0
+      const channelId = index;
+      const channelName = channel.channel_name || `Channel_${channelId}`;
+      
+      // Convert UI programs format to output format
+      const programs: Program[] = (channel.programs || []).map((prog: any, progIndex: number) => {
+        // Format program_id as "CHANNELNAME_N" (e.g., "RTK2_1", "KTV_1")
+        const programId = `${channelName}_${progIndex + 1}`;
+        
+        return {
+          program_id: programId,
+          start: prog.start || 0,
+          end: prog.end || 30,
+          genre: prog.genre || 'news',
+          score: prog.score || 50,
+        };
       });
 
-      currentStart = end;
-    }
+      return {
+        channel_id: channelId,
+        channel_name: channelName,
+        programs,
+      };
+    });
+  } else {
+    // Generate channels automatically
+    channels = Array.from({
+      length: channels_count,
+    }).map((_, channelId) => {
+      let programs: Program[] = [];
+      let currentStart = opening_time;
+      let consecutiveGenreCount = 0;
+      let lastGenre = "";
 
-    return {
-      channel_id: channelId,
-      channel_name: `Channel_${channelId}`,
-      programs,
-    };
-  });
+      while (currentStart < closing_time) {
+        // Calculate available time
+        const remainingTime = closing_time - currentStart;
+        if (remainingTime < min_duration) break;
 
-  return {
-    ...config,
-    priority_blocks,
-    time_preferences,
-    channels,
+        // Generate duration within min/max constraints
+        const maxPossibleDuration = Math.min(max_duration, remainingTime);
+        const duration = rand(min_duration, maxPossibleDuration);
+        const end = currentStart + duration;
+
+        // Pick genre (avoid too many consecutive same genres)
+        let genre = pickGenre();
+        if (genre === lastGenre && consecutiveGenreCount >= config.max_consecutive_genre) {
+          // Force different genre
+          const otherGenres = GENRES.filter(g => g !== lastGenre);
+          genre = otherGenres[rand(0, otherGenres.length - 1)];
+          consecutiveGenreCount = 0;
+        } else if (genre === lastGenre) {
+          consecutiveGenreCount++;
+        } else {
+          consecutiveGenreCount = 1;
+          lastGenre = genre;
+        }
+
+        // Generate score within min/max constraints
+        const score = rand(min_score, max_score);
+
+        const channelName = `Channel_${channelId}`;
+        const programId = `${channelName}_${programs.length + 1}`;
+
+        programs.push({
+          program_id: programId,
+          start: currentStart,
+          end,
+          genre,
+          score,
+        });
+
+        currentStart = end;
+      }
+
+      return {
+        channel_id: channelId,
+        channel_name: `Channel_${channelId}`,
+        programs,
+      };
+    });
+  }
+
+  // Return output fields (exclude generator-only config: min_score, max_score, max_duration)
+  const output: any = {
+    opening_time,
+    closing_time,
+    min_duration,
+    max_consecutive_genre,
+    channels_count,
+    switch_penalty,
+    termination_penalty,
   };
+
+  // Add optional arrays only if they exist
+  if (priority_blocks && priority_blocks.length > 0) {
+    output.priority_blocks = priority_blocks;
+  }
+  if (time_preferences && time_preferences.length > 0) {
+    output.time_preferences = time_preferences;
+  }
+  
+  // Always include channels
+  output.channels = channels;
+
+  return output;
 }

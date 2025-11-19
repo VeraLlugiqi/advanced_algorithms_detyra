@@ -21,9 +21,13 @@ export function TimePreferences({
     "news",
     "sports",
     "music",
+    "movie",
     "movies",
     "kids",
     "documentary",
+    "drama",
+    "talk",
+    "entertainment",
   ];
 
   const addItem = () => {

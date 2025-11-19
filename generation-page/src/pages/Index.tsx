@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Minus, Copy, Check, Download } from "lucide-react";
+import { Plus, Minus, Copy, Check, Download, Sparkles, X } from "lucide-react";
 import { BasicSettings } from "../components/BasicSettings";
 import { Channels } from "../components/Channels";
 import { PriorityBlocks } from "../components/PriorityBlocks";
 import { TimePreferences } from "../components/TimePreference";
 import { generateSchedule } from "../lib/generate";
+import { kosovoExampleData } from "../lib/kosovoExample";
 
 const configSchema = z.object({
   opening_time: z.number().min(0).max(1440),
@@ -22,6 +23,15 @@ const configSchema = z.object({
   channels_count: z.number().min(1),
   switch_penalty: z.number().min(0),
   termination_penalty: z.number().min(0),
+}).refine((data) => data.opening_time < data.closing_time, {
+  message: "Opening time must be less than closing time",
+  path: ["closing_time"],
+}).refine((data) => data.min_duration <= data.max_duration, {
+  message: "Min duration must be less than or equal to max duration",
+  path: ["max_duration"],
+}).refine((data) => data.min_score <= data.max_score, {
+  message: "Min score must be less than or equal to max score",
+  path: ["max_score"],
 });
 
 type ConfigFormData = z.infer<typeof configSchema>;
@@ -42,6 +52,8 @@ export default function Page() {
   const {
     register,
     watch,
+    setValue,
+    reset,
     formState: { errors },
   } = useForm<ConfigFormData>({
     resolver: zodResolver(configSchema),
@@ -58,6 +70,63 @@ export default function Page() {
       termination_penalty: 10,
     },
   });
+
+  const loadKosovoPreset = () => {
+    // Load values from kosovoExampleData
+    setValue('opening_time', kosovoExampleData.opening_time);
+    setValue('closing_time', kosovoExampleData.closing_time);
+    setValue('min_duration', kosovoExampleData.min_duration);
+    setValue('max_duration', kosovoExampleData.max_duration);
+    setValue('min_score', kosovoExampleData.min_score);
+    setValue('max_score', kosovoExampleData.max_score);
+    setValue('max_consecutive_genre', kosovoExampleData.max_consecutive_genre);
+    setValue('channels_count', kosovoExampleData.channels_count);
+    setValue('switch_penalty', kosovoExampleData.switch_penalty);
+    setValue('termination_penalty', kosovoExampleData.termination_penalty);
+    
+    // Convert channels to UI format (add internal id for each program)
+    const exampleChannels = kosovoExampleData.channels.map((channel: any) => ({
+      id: Date.now().toString() + Math.random(),
+      channel_id: channel.channel_id,
+      channel_name: channel.channel_name,
+      programs: channel.programs.map((prog: any) => ({
+        id: Date.now().toString() + Math.random(),
+        start: prog.start,
+        end: prog.end,
+        genre: prog.genre,
+        score: prog.score,
+      })),
+    }));
+    
+    // Convert priority blocks to UI format
+    const examplePriorityBlocks = kosovoExampleData.priority_blocks.map((block: any) => ({
+      id: Date.now().toString() + Math.random(),
+      start: block.start,
+      end: block.end,
+      allowed_channels: block.allowed_channels,
+    }));
+    
+    // Convert time preferences to UI format
+    const exampleTimePreferences = kosovoExampleData.time_preferences.map((pref: any) => ({
+      id: Date.now().toString() + Math.random(),
+      start: pref.start,
+      end: pref.end,
+      preferred_genre: pref.preferred_genre,
+      bonus: pref.bonus,
+    }));
+    
+    setChannels(exampleChannels);
+    setPriorityBlocks(examplePriorityBlocks);
+    setTimePreferences(exampleTimePreferences);
+  };
+
+  const clearAll = () => {
+    reset();
+    setChannels([]);
+    setPriorityBlocks([]);
+    setTimePreferences([]);
+    setGeneratedData(null);
+  };
 
   const formValues = watch();
 
@@ -79,10 +148,25 @@ export default function Page() {
   const handleDownloadJson = () => {
     const fullConfig = getFullConfig();
     // Transform time_preferences and priority_blocks to remove 'id' field
+    // Transform channels to remove internal 'id' field and ensure proper structure
     const transformedConfig = {
       ...fullConfig,
       time_preferences: timePreferences.map(({ id, ...rest }) => rest),
       priority_blocks: priorityBlocks.map(({ id, name, ...rest }) => rest),
+      channels: channels.map((channel: any) => {
+        const channelName = channel.channel_name || `Channel_${channel.channel_id}`;
+        return {
+          channel_id: channel.channel_id,
+          channel_name: channelName,
+          programs: (channel.programs || []).map((prog: any, index: number) => ({
+            program_id: `${channelName}_${index + 1}`,
+            start: prog.start,
+            end: prog.end,
+            genre: prog.genre,
+            score: prog.score,
+          })),
+        };
+      }),
     };
     const data = generateSchedule(transformedConfig);
     const jsonString = JSON.stringify(data, null, 2);
@@ -110,6 +194,22 @@ export default function Page() {
               <p className="mt-1 text-sm text-slate-600">
                 Generate instances for TV channel scheduling problem in public spaces
               </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={loadKosovoPreset}
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-purple-700 active:scale-95 shadow-sm"
+              >
+                <Sparkles size={16} />
+                Kosovo Example
+              </button>
+              <button
+                onClick={clearAll}
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-red-700 active:scale-95 shadow-sm"
+              >
+                <X size={16} />
+                Clear
+              </button>
             </div>
           </div>
         </div>
