@@ -1,145 +1,73 @@
-# Ndryshimet dhe Udhëzimet për TV Channel Scheduling Instance Generator
+# React + TypeScript + Vite
 
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-###  . Gjenerim Automatik i Instancave
+Currently, two official plugins are available:
 
-**Funksionaliteti:**
--  Krijon automatikisht numrin e specifikuar të kanaleve
--  Për çdo kanal krijon programe me:
-  - Kohë fillimi dhe mbarimi brenda intervalit të lejuar
-  - Pa mbivendosje brenda të njëjtit kanal
-  - Zhanër (genre) të caktuar
-  - Score brenda intervalit min/max të specifikuar
-  - Respekton min/max duration
--  Merr parasysh priority blocks dhe time preferences (ose i gjeneron automatikisht nëse nuk janë të specifikuara)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-###  4. Prodhimi i File JSON
-- JSON-i prodhohet në formatin e duhur me fushat:
-  - `opening_time`, `closing_time`
-  - `channels` (me `channel_id`, `channel_name`, `programs`)
-  - `programs` (me `program_id`, `start`, `end`, `genre`, `score`)
-  - `priority_blocks` (nëse janë të specifikuara)
-  - `time_preferences` (nëse janë të specifikuara)
-  - Të gjitha parametrat e tjerë
+## React Compiler
 
-###  5. Butoni "Download JSON file"
-- Butoni "Download JSON file" është shtuar pranë butonit "Copy JSON"
-- Kur klikohet:
-  - Gjeneron instancën në memorie sipas parametrave
-  - Transformon të dhënat në formatin e duhur
-  - Shkarkon file-in si `kosovo_tv_input_generated.json`
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-###  6. Pamja Vizuale
-- Struktura e ngjashme me gjeneratorin e "Traffic Signaling"
-- Panel me parametra në anën e majtë
-- Preview i JSON në anën e djathtë
-- Komponente të organizuara dhe moderne
+## Expanding the ESLint configuration
 
-## Ndryshimet e Bëra në Kod
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-### 1. `src/pages/Index.tsx`
--  Shtuar `max_duration`, `min_score`, `max_score` në schema
--  Përditësuar default values
--  Shtuar butonin "Download JSON file"
--  Përditësuar titullin e aplikacionit
--  Importuar `generateSchedule` dhe `Download` icon
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-### 2. `src/components/BasicSettings.tsx`
--  Shtuar slider për `opening_time` dhe `closing_time`
--  Shtuar slider për `max_duration`, `min_score`, `max_score`
--  Hequr input fields për opening/closing time (tani vetëm slider)
--  Përmirësuar butonin "Generate Instance"
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-### 3. `src/components/TimePreference.tsx`
--  **KORRIGJUAR**: Format i ri që përputhet me specifikimin:
-  - `start` (në minuta) në vend të `day` dhe `start_time`
-  - `end` (në minuta) në vend të `end_time`
-  - `preferred_genre` (dropdown me zhanre)
-  - `bonus` (numër) në vend të `priority`
-
-### 4. `src/lib/generate.ts`
--  Shtuar `max_duration`, `min_score`, `max_score` në interface `Config`
--  Përmirësuar `generateSchedule` për të:
-  - Përdorur `max_duration` për kufizimin e kohëzgjatjes së programeve
-  - Përdorur `min_score` dhe `max_score` për score të programeve
-  - Respektuar kufizimin e `max_consecutive_genre`
-  - Përdorur priority blocks dhe time preferences të përdoruesit (nëse janë të specifikuara)
-  - Gjeneruar programe pa mbivendosje dhe brenda kufijve të specifikuar
-
-### 5. `index.html`
--  Përditësuar titulli i faqes
-
-### Hapat për Ekzekutim
-
-1. **Hap terminalin dhe shko në direktorinë e projektit:**
-   ```bash
-   cd advanced_algorithms_detyra/generation-page
-   ```
-
-2. **Nis serverin e zhvillimit:**
- 
-   Ose:
-   ```bash
-   npm run dev
-   ```
-
-4. **Hap browserin:**
-   - Aplikacioni do të hapet automatikisht në `http://localhost:5173` (ose port tjetër që Vite zgjedh)
-   - Nëse nuk hapet automatikisht, shko manualisht në URL-në që shfaqet në terminal
-
-5. **Përdor aplikacionin:**
-   - Ndrysho parametrat duke përdorur slider-at
-   - Shto Time Preferences dhe Priority Blocks nëse dëshiron
-   - Kliko "Generate Instance" për të parë preview
-   - Kliko "Download JSON file" për të shkarkuar file-in JSON
-
-## Format i JSON Output
-
-JSON-i i gjeneruar ka këtë strukturë:
-
-```json
-{
-  "opening_time": 0,
-  "closing_time": 630,
-  "min_duration": 30,
-  "max_duration": 120,
-  "min_score": 10,
-  "max_score": 100,
-  "max_consecutive_genre": 2,
-  "channels_count": 24,
-  "switch_penalty": 5,
-  "termination_penalty": 10,
-  "priority_blocks": [
-    {
-      "start": 100,
-      "end": 200,
-      "allowed_channels": [0, 1, 2]
-    }
-  ],
-  "time_preferences": [
-    {
-      "start": 0,
-      "end": 60,
-      "preferred_genre": "news",
-      "bonus": 10
-    }
-  ],
-  "channels": [
-    {
-      "channel_id": 0,
-      "channel_name": "Channel_0",
-      "programs": [
-        {
-          "program_id": "channel_0_program_1",
-          "start": 0,
-          "end": 45,
-          "genre": "news",
-          "score": 75
-        },
-        ...
-      ]
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
     },
-    ...
-  ]
-}
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
