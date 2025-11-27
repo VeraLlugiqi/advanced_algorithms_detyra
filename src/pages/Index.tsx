@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Download, Sparkles, X } from "lucide-react";
+import { Copy, Check, Download, X } from "lucide-react";
 import { BasicSettings } from "../components/BasicSettings";
 import { Channels } from "../components/Channels";
 import { PriorityBlocks } from "../components/PriorityBlocks";
