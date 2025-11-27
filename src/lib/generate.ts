@@ -154,7 +154,13 @@ export function generateSchedule(config: Config): Config {
       };
     });
   } else {
-    // Generate channels automatically
+    // Generate channels automatically with varied names
+    const channelNamePrefixes = [
+      "RTK", "KTV", "RTV", "TV21", "Klan", "ATV", "T7", "RTS", "B92", "Pink",
+      "Prva", "Happy", "N1", "Studio", "Channel", "TV", "Media", "Broadcast",
+      "Network", "Entertainment", "News", "Sports", "Music", "Kids", "Drama"
+    ];
+    
     channels = Array.from({
       length: channels_count,
     }).map((_, channelId) => {
@@ -162,6 +168,12 @@ export function generateSchedule(config: Config): Config {
       let currentStart = opening_time;
       let consecutiveGenreCount = 0;
       let lastGenre = "";
+
+      // Generate varied channel name
+      const prefixIndex = channelId % channelNamePrefixes.length;
+      const prefix = channelNamePrefixes[prefixIndex];
+      const suffix = Math.floor(channelId / channelNamePrefixes.length);
+      const channelName = suffix > 0 ? `${prefix}${suffix + 1}` : prefix;
 
       while (currentStart < closing_time) {
         // Calculate available time
@@ -190,7 +202,6 @@ export function generateSchedule(config: Config): Config {
         // Generate score within min/max constraints
         const score = rand(min_score, max_score);
 
-        const channelName = `Channel_${channelId}`;
         const programId = `${channelName}_${programs.length + 1}`;
 
         programs.push({
@@ -206,7 +217,7 @@ export function generateSchedule(config: Config): Config {
 
       return {
         channel_id: channelId,
-        channel_name: `Channel_${channelId}`,
+        channel_name: channelName,
         programs,
       };
     });

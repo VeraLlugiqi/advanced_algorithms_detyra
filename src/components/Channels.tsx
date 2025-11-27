@@ -57,10 +57,21 @@ export function Channels({
   const addChannel = () => {
     // Always use sequential channel_id starting from 0
     const channelId = items.length
+    // Generate varied channel names
+    const channelNamePrefixes = [
+      "RTK", "KTV", "RTV", "TV21", "Klan", "ATV", "T7", "RTS", "B92", "Pink",
+      "Prva", "Happy", "N1", "Studio", "Channel", "TV", "Media", "Broadcast",
+      "Network", "Entertainment", "News", "Sports", "Music", "Kids", "Drama"
+    ]
+    const prefixIndex = channelId % channelNamePrefixes.length
+    const prefix = channelNamePrefixes[prefixIndex]
+    const suffix = Math.floor(channelId / channelNamePrefixes.length)
+    const channelName = suffix > 0 ? `${prefix}${suffix + 1}` : prefix
+    
     const newChannel: Channel = {
       id: Date.now().toString(),
       channel_id: channelId,
-      channel_name: `Channel_${channelId}`,
+      channel_name: channelName,
       programs: [],
     }
     onChange([...items, newChannel])
