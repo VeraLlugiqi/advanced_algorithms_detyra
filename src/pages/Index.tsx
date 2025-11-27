@@ -48,6 +48,7 @@ export default function Page() {
   const [channels, setChannels] = useState<any[]>([]);
   const [copied, setCopied] = useState(false);
   const [generatedData, setGeneratedData] = useState<any>(null);
+  const [showGeneratedOutput, setShowGeneratedOutput] = useState(false);
 
   const {
     register,
@@ -118,6 +119,30 @@ export default function Page() {
     setChannels(exampleChannels);
     setPriorityBlocks(examplePriorityBlocks);
     setTimePreferences(exampleTimePreferences);
+    
+    // Also generate and show the JSON output
+    // Use setTimeout to ensure form values are updated first
+    setTimeout(() => {
+      const currentFormValues = watch();
+      const fullConfig: ConfigData = {
+        ...currentFormValues,
+        opening_time: kosovoExampleData.opening_time,
+        closing_time: kosovoExampleData.closing_time,
+        min_duration: kosovoExampleData.min_duration,
+        max_duration: kosovoExampleData.max_duration,
+        min_score: kosovoExampleData.min_score,
+        max_score: kosovoExampleData.max_score,
+        max_consecutive_genre: kosovoExampleData.max_consecutive_genre,
+        channels_count: kosovoExampleData.channels_count,
+        switch_penalty: kosovoExampleData.switch_penalty,
+        termination_penalty: kosovoExampleData.termination_penalty,
+        time_preferences: exampleTimePreferences,
+        priority_blocks: examplePriorityBlocks,
+        channels: exampleChannels,
+      };
+      const data = generateSchedule(fullConfig);
+      handleGenerate(data);
+    }, 100);
   };
 
   const clearAll = () => {
@@ -126,50 +151,26 @@ export default function Page() {
     setPriorityBlocks([]);
     setTimePreferences([]);
     setGeneratedData(null);
+    setShowGeneratedOutput(false);
   };
 
-  const formValues = watch();
-
-  const getFullConfig = (): ConfigData => ({
-    ...formValues,
-    time_preferences: timePreferences,
-    priority_blocks: priorityBlocks,
-    channels: channels,
-  });
-
-  const configJson = JSON.stringify(getFullConfig(), null, 2);
+  const getGeneratedOutput = () => {
+    if (!generatedData) return null;
+    return JSON.stringify(generatedData, null, 2);
+  };
 
   const handleCopyJson = () => {
-    navigator.clipboard.writeText(configJson);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const output = getGeneratedOutput();
+    if (output) {
+      navigator.clipboard.writeText(output);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleDownloadJson = () => {
-    const fullConfig = getFullConfig();
-    // Transform time_preferences and priority_blocks to remove 'id' field
-    // Transform channels to remove internal 'id' field and ensure proper structure
-    const transformedConfig = {
-      ...fullConfig,
-      time_preferences: timePreferences.map(({ id, ...rest }) => rest),
-      priority_blocks: priorityBlocks.map(({ id, name, ...rest }) => rest),
-      channels: channels.map((channel: any) => {
-        const channelName = channel.channel_name || `Channel_${channel.channel_id}`;
-        return {
-          channel_id: channel.channel_id,
-          channel_name: channelName,
-          programs: (channel.programs || []).map((prog: any, index: number) => ({
-            program_id: `${channelName}_${index + 1}`,
-            start: prog.start,
-            end: prog.end,
-            genre: prog.genre,
-            score: prog.score,
-          })),
-        };
-      }),
-    };
-    const data = generateSchedule(transformedConfig);
-    const jsonString = JSON.stringify(data, null, 2);
+    if (!generatedData) return;
+    const jsonString = JSON.stringify(generatedData, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -180,6 +181,19 @@ export default function Page() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const handleGenerate = (data: any) => {
+    setGeneratedData(data);
+    setShowGeneratedOutput(true);
+    // Auto-scroll to output after a short delay
+    setTimeout(() => {
+      const outputElement = document.getElementById('generated-output');
+      if (outputElement) {
+        outputElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 100);
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -200,7 +214,7 @@ export default function Page() {
                 onClick={loadKosovoPreset}
                 className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-purple-700 active:scale-95 shadow-sm"
               >
-                <Sparkles size={16} />
+          
                 Kosovo Example
               </button>
               <button
@@ -212,6 +226,33 @@ export default function Page() {
               </button>
             </div>
           </div>
+          {showGeneratedOutput && generatedData && (
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                onClick={handleCopyJson}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-slate-600 active:scale-95"
+              >
+                {copied ? (
+                  <>
+                    <Check size={16} />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} />
+                    Copy JSON
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleDownloadJson}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-blue-700 active:scale-95 shadow-sm"
+              >
+                <Download size={16} />
+                Download JSON
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -221,11 +262,15 @@ export default function Page() {
             <BasicSettings
               register={register}
               watch={watch}
+              setValue={setValue}
               errors={errors}
               timePreferences={timePreferences}
               priorityBlocks={priorityBlocks}
               channels={channels}
-              onGenerate={setGeneratedData}
+              onGenerate={handleGenerate}
+              onUpdateChannels={setChannels}
+              onUpdateTimePreferences={setTimePreferences}
+              onUpdatePriorityBlocks={setPriorityBlocks}
             />
             <TimePreferences
               items={timePreferences}
@@ -239,73 +284,32 @@ export default function Page() {
           </div>
 
           {/* Right Panel - JSON Preview */}
-          <div className="lg:sticky lg:top-24 lg:h-fit space-y-6">
-            {/* Configuration Preview Box */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg">
-              <div className="flex items-center justify-between border-b border-slate-200/80 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Configuration Preview
-                  </h2>
-                  <p className="text-xs text-slate-600">
-                    Real-time JSON output
-                  </p>
-                </div>
+          {showGeneratedOutput && generatedData && (
+            <div id="generated-output" className="lg:sticky lg:top-24 lg:h-fit">
+              {/* Generated Data Box */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg">
+                 <div className="flex items-center justify-between border-b border-slate-200/80 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+                   <div>
+                     <h2 className="text-lg font-semibold text-slate-900">
+                       Generated Output
+                     </h2>
+                     <p className="text-xs text-slate-600">
+                       {generatedData.channels?.length || 0} channels, {' '}
+                       {generatedData.channels?.reduce((sum: number, ch: any) => sum + (ch.programs?.length || 0), 0) || 0} programs, {' '}
+                       {generatedData.time_preferences?.length || 0} time preferences, {' '}
+                       {generatedData.priority_blocks?.length || 0} priority blocks
+                     </p>
+                   </div>
+                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleCopyJson}
-                    className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white transition-all hover:bg-slate-600 active:scale-95"
-                  >
-                    {copied ? (
-                      <>
-                        <Check size={16} />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={16} />
-                        Copy JSON
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={handleDownloadJson}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-blue-700 active:scale-95 shadow-sm"
-                  >
-                    <Download size={16} />
-                    Download JSON file
-                  </button>
+                <div className="bg-slate-950 p-6">
+                  <pre className="max-h-[600px] overflow-auto rounded-xl bg-slate-900 p-4 text-sm font-mono text-slate-100 leading-relaxed">
+                    <code>{getGeneratedOutput()}</code>
+                  </pre>
                 </div>
-              </div>
-
-              <div className="bg-slate-950 p-6">
-                <pre className="max-h-[500px] overflow-auto rounded-xl bg-slate-900 p-4 text-sm font-mono text-slate-100 leading-relaxed">
-                  <code>{configJson}</code>
-                </pre>
               </div>
             </div>
-
-            {/* Generated Data Box */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg">
-              <div className="flex items-center justify-between border-b border-slate-200/80 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Generated Data
-                  </h2>
-                  <p className="text-xs text-slate-600">
-                    Parsed configuration structure
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-slate-950 p-6">
-                <pre className="max-h-[500px] overflow-auto rounded-xl bg-slate-900 p-4 text-sm font-mono text-slate-100 leading-relaxed">
-                  <code>{JSON.stringify(generatedData, null, 2)}</code>
-                </pre>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

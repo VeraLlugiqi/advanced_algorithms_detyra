@@ -4,21 +4,29 @@ import { generateSchedule } from "../lib/generate";
 interface BasicSettingsProps {
   register: any;
   watch: any;
+  setValue: any;
   errors: any;
   timePreferences: any[];
   priorityBlocks: any[];
   channels: any[];
   onGenerate: (data: any) => void;
+  onUpdateChannels?: (channels: any[]) => void;
+  onUpdateTimePreferences?: (prefs: any[]) => void;
+  onUpdatePriorityBlocks?: (blocks: any[]) => void;
 }
 
 export function BasicSettings({
   register,
   watch,
+  setValue,
   errors,
   timePreferences,
   priorityBlocks,
   channels,
   onGenerate,
+  onUpdateChannels,
+  onUpdateTimePreferences,
+  onUpdatePriorityBlocks,
 }: BasicSettingsProps) {
   const formValues = watch();
 
@@ -116,6 +124,45 @@ export function BasicSettings({
     const fullConfig = buildConfig();
     const data = generateSchedule(fullConfig);
     onGenerate(data);
+    
+    // Always populate UI fields with generated data when user clicks Generate
+    if (data.channels && data.channels.length > 0 && onUpdateChannels) {
+      // Convert generated channels to UI format
+      const uiChannels = data.channels.map((channel: any) => ({
+        id: Date.now().toString() + Math.random() + channel.channel_id,
+        channel_id: channel.channel_id,
+        channel_name: channel.channel_name,
+        programs: (channel.programs || []).map((prog: any) => ({
+          id: Date.now().toString() + Math.random() + prog.program_id,
+          start: prog.start,
+          end: prog.end,
+          genre: prog.genre,
+          score: prog.score,
+        })),
+      }));
+      onUpdateChannels(uiChannels);
+    }
+    
+    if (data.time_preferences && data.time_preferences.length > 0 && onUpdateTimePreferences) {
+      const uiTimePreferences = data.time_preferences.map((pref: any) => ({
+        id: Date.now().toString() + Math.random(),
+        start: pref.start,
+        end: pref.end,
+        preferred_genre: pref.preferred_genre,
+        bonus: pref.bonus,
+      }));
+      onUpdateTimePreferences(uiTimePreferences);
+    }
+    
+    if (data.priority_blocks && data.priority_blocks.length > 0 && onUpdatePriorityBlocks) {
+      const uiPriorityBlocks = data.priority_blocks.map((block: any) => ({
+        id: Date.now().toString() + Math.random(),
+        start: block.start,
+        end: block.end,
+        allowed_channels: block.allowed_channels,
+      }));
+      onUpdatePriorityBlocks(uiPriorityBlocks);
+    }
   };
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md">
@@ -152,10 +199,19 @@ export function BasicSettings({
                     {setting.description}
                   </p>
                 </div>
-                <div className="flex items-baseline gap-1 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-                  <span className="text-xl font-bold text-blue-600">
-                    {formValues[setting.key as keyof typeof formValues]}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={setting.min}
+                    max={setting.max}
+                    value={formValues[setting.key as keyof typeof formValues] || 0}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || setting.min;
+                      const clampedValue = Math.max(setting.min, Math.min(setting.max, value));
+                      setValue(setting.key as any, clampedValue, { shouldValidate: true });
+                    }}
+                    className="w-20 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-sm font-bold text-blue-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
                   <span className="text-xs font-medium text-slate-600">
                     {setting.unit}
                   </span>
